@@ -3,8 +3,11 @@ import config
 from telebot import types
 import requests
 import re
+from bs4 import BeautifulSoup as BS
 
 bot= telebot.TeleBot(config.config['telegram_token'])
+
+
 @bot.message_handler(commands=['exchange'])
 def user_exchange(message):
     # rmk = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
@@ -72,17 +75,28 @@ def user_currency(message):
 def user_weather(message):
     city = message.text.lower()
     try:
-        params = {'APPID': config.config['weather_token'], 'q': city, 'units': 'metric', 'lang': 'ru'}
-        result = requests.get(config.config['url_weather'], params=params)
-        weather = result.json()
-        bot.send_message(message.chat.id, "В місці " + str(weather["name"]) + " температура " + str(
-            float(weather["main"]['temp'])) + "\n" +
-                         "Максимальна температура " + str(float(weather['main']['temp_max'])) + "\n" +
-                         "Мінімальна температура " + str(float(weather['main']['temp_min'])) + "\n" +
-                         "Швидкість вітру " + str(float(weather['wind']['speed'])) + "\n" +
-                         "Тиск " + str(float(weather['main']['pressure'])) + "\n" +
-                         "Вологість " + str(int(weather['main']['humidity'])) + "%" + "\n" +
-                         "Видимість " + str(weather['visibility']) + "\n")
+        r = requests.get(f'https://ua.sinoptik.ua/погода-{city}')
+        html = BS(r.content, 'html.parser')
+        for el in html.select('#content'):
+            t_min = el.select('.temperature .min')[0].text
+            t_max = el.select('.temperature .max')[0].text
+            text = el.select('.wDescription .description')[0].text
+
+        bot.send_message(message.chat.id, f"Привіт, погода на сьогодні у {city.capitalize()}:\n" +
+                             t_min + ', ' + t_max + '\n' + text)
+
+
+        # params = {'APPID': config.config['weather_token'], 'q': city, 'units': 'metric', 'lang': 'ru'}
+        # result = requests.get(config.config['url_weather'], params=params)
+        # weather = result.json()
+        # bot.send_message(message.chat.id, "В місці " + str(weather["name"]) + " температура " + str(
+        #     float(weather["main"]['temp'])) + "\n" +
+        #                  "Максимальна температура " + str(float(weather['main']['temp_max'])) + "\n" +
+        #                  "Мінімальна температура " + str(float(weather['main']['temp_min'])) + "\n" +
+        #                  "Швидкість вітру " + str(float(weather['wind']['speed'])) + "\n" +
+        #                  "Тиск " + str(float(weather['main']['pressure'])) + "\n" +
+        #                  "Вологість " + str(int(weather['main']['humidity'])) + "%" + "\n" +
+        #                  "Видимість " + str(weather['visibility']) + "\n")
     except:
         bot.send_message(message.chat.id, 'Трясця, ти в якій жопі живеш, синоптик юа не бачить твого міста...')
 bot.polling(none_stop=True, interval=0)
