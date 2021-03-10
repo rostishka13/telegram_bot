@@ -4,16 +4,35 @@ from telebot import types
 import requests
 import re
 from bs4 import BeautifulSoup as BS
+import sqlite3
+from datetime import date,timedelta
+import matplotlib.pyplot as plt
 
-bot= telebot.TeleBot(config.config['telegram_token'])
+bot= telebot.TeleBot(config.telegram_token)
 
 
-@bot.message_handler(commands=['exchange'])
-def user_exchange(message):
-    # rmk = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    msg = bot.send_message(message.chat.id, 'якщо ти дуже розумний і хочеш випробувати усі мої супер здібності, тобі сюди..')
-    # bot.register_next_step_handler(msg, currency_exchange)
+# @bot.message_handler(commands=['exchange'])
+# def user_exchange(message):
+#     # rmk = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+#     msg = bot.send_message(message.chat.id, 'якщо ти дуже розумний і хочеш випробувати усі мої супер здібності, тобі сюди..')
+#     # bot.register_next_step_handler(msg, currency_exchange)
+@bot.message_handler(commands=['history'])
+def history(message):
+    end = date.today()
+    start = end - timedelta(days=7)
+    end_str = end.strftime('%Y-%m-%d')
+    start_str = start.strftime('%Y-%m-%d')
+    resp = requests.get(
+        f'https://api.exchangeratesapi.io/history?start_at={start_str}&end_at={end_str}&base=USD&symbols=CAD').json()
+    rmk = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    rmk.add(types.KeyboardButton('Графік курсу валют'))
+    bot.send_message(message.chat.id, 'курс валют за останній тиждень....')
+    for key, value in resp['rates'].items():
+        for cur in value.items():
+            bot.send_message(message.chat.id, f' data: {key}, currency: USD -> {cur[0]}, value: {round(cur[1],2)}')
 
+
+    
 @bot.message_handler(commands=['start'])
 def start_user(message):
     rmk = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
@@ -99,6 +118,11 @@ def user_weather(message):
         #                  "Видимість " + str(weather['visibility']) + "\n")
     except:
         bot.send_message(message.chat.id, 'Трясця, ти в якій жопі живеш, синоптик юа не бачить твого міста...')
+
+
+
+
+
 bot.polling(none_stop=True, interval=0)
 
 
